@@ -1,0 +1,205 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Prediction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            color: #333333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+
+        input[type="submit"] {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        .prediction-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #dddddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+        }
+
+        .predicted-label {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .confidence-score {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .uploaded-image {
+            max-width: 300px;
+            max-height: 300px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Xay Classification-Deeparogya.ai</h1>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="file" name="images" id="images" accept=".jpg, .jpeg, .png" multiple required>
+        <input type="submit" value="Predict">
+    </form>
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+ 
+</body>
+</html>
+
+
+<!-- 
+
+<!DOCTYPE html>
+<html lang="en">
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Prediction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            color: #333333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+
+        input[type="submit"] {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        .prediction-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #dddddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+        }
+
+        .predicted-label {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .confidence-score {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .uploaded-image {
+            max-width: 300px;
+            max-height: 300px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Xay Classification-Deeparogya.ai</h1>
+    
+   
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="file" name="images" id="images" accept=".jpg, .jpeg, .png" multiple required>
+        <input type="submit" value="Predict">
+    </form>
+    
+  
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+
+ 
+    <form action="/convert_dicom_to_jpg" method="post">
+        <label for="input_folder">Select input folder:</label>
+        <input type="file" name="input_folder" id="input_folder" required>
+        <input type="submit" value="Convert to JPG">
+    </form>
+
+    {% if dicom_message %}
+        <p>{{ dicom_message }}</p>
+    {% endif %}
+    
+</body>
+</html> -->
