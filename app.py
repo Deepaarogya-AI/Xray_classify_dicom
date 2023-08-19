@@ -1,6 +1,3 @@
-
-
-
 import os
 import shutil
 import base64
@@ -47,16 +44,12 @@ def create_densenet_model():
     model.eval()
     return model
 
-
-
 def create_resnet101_model():
     model = resnet101(pretrained=False)  # Do not use pre-trained weights
     num_features = model.fc.in_features
     model.fc = torch.nn.Linear(num_features, num_classes)
     model.eval()
     return model
-
-
 
 def create_resnet34_model():
     model = resnet34(pretrained=False)  # Do not use pre-trained weights
@@ -87,7 +80,7 @@ model_dens = create_densenet_model()
 
 # Load the pretrained weights for matching layers
 pretrained_state_dict = torch.load('v2_densenet121_95acc.pth', map_location=torch.device('cpu'))
-print("densenet161 model loaded")
+#print("densenet161 model loaded")
 model_dict = model_dens.state_dict()
 pretrained_dict = {k: v for k, v in pretrained_state_dict.items() if k in model_dict}
 model_dict.update(pretrained_dict)
@@ -114,7 +107,6 @@ model_dict = model_dens_aug.state_dict()
 pretrained_dict = {k: v for k, v in pretrained_state_dict.items() if k in model_dict}
 model_dict.update(pretrained_dict)
 model_dens_aug.load_state_dict(model_dict)
-
 
 
 # Load the individual models' weights
@@ -147,20 +139,6 @@ def preprocess_image(image, model_name, image_size):
         return None
 
 
-# Define a function for ensemble inference
-def ensemble_inference(models, image, image_size):
-    image_tensor = preprocess_image(image, models[0].__class__.__name__, image_size)
-
-    with torch.no_grad():
-        predictions = []
-        for model in models:
-            outputs = model(image_tensor)
-            predictions.append(F.softmax(outputs, dim=1).squeeze().numpy())
-
-        predictions = np.mean(predictions, axis=0)
-        return np.argmax(predictions), predictions
-
-
 def is_valid_dicom(dicom_file):
     try:
         ds = pydicom.dcmread(dicom_file)
@@ -168,8 +146,6 @@ def is_valid_dicom(dicom_file):
     except Exception as e:
         print(f"Invalid DICOM file: {e}")
         return False
-
-
 
 def dicom_to_jpg(dicom_file):
     try:
@@ -190,6 +166,66 @@ def dicom_to_jpg(dicom_file):
     except Exception as e:
         print(f"Error converting DICOM to JPEG: {str(e)}")
         return None
+
+# Define a function for ensemble inference
+def ensemble_inference(models, image, image_size):
+    image_tensor = preprocess_image(image, models[0].__class__.__name__, image_size)
+
+    with torch.no_grad():
+        predictions = []
+        for model in models:
+            outputs = model(image_tensor)
+            predictions.append(F.softmax(outputs, dim=1).squeeze().numpy())
+
+        predictions = np.mean(predictions, axis=0)
+        return np.argmax(predictions), predictions
+
+
+def ensemble_inference_hard(models, image, image_size):
+    image_tensor = preprocess_image(image, models[0].__class__.__name__, image_size)
+
+    with torch.no_grad():
+        predictions = []
+        for model in models:
+            outputs = model(image_tensor)
+            class_index = np.argmax(outputs.cpu().numpy())
+            predictions.append(class_index)
+
+        # Count the occurrences of each class index
+        class_counts = np.bincount(predictions)
+        
+        # Choose the class with the majority vote
+        ensemble_prediction = np.argmax(class_counts)
+        
+        return ensemble_prediction
+
+
+def process_dicom_image_hard(image, ensemble_models, label_map, threshold, image_size):
+    image_filename = secure_filename(image.filename)
+    dicom_path = os.path.join(converted_images_folder, image_filename)
+    image.save(dicom_path)
+    
+    png_path = os.path.join(converted_images_folder, f"{image_filename}.png")
+    mritopng.convert_file(dicom_path, png_path, auto_contrast=True)
+    png_image = Image.open(png_path).convert('RGB')
+    image_for_prediction = png_image
+
+    with open(png_path, "rb") as image_file:
+        base64_image_data = base64.b64encode(image_file.read()).decode("utf-8")
+
+    predicted_label_index = ensemble_inference_hard(ensemble_models, image_for_prediction, image_size)
+    # Note: Confidence score is not used in hard voting
+
+    predicted_label_str = label_map[predicted_label_index]
+
+    prediction_data = {
+        "image_name": image_filename,
+        "predicted_label": predicted_label_str,
+        "confidence_score": None,  # No confidence score for hard voting
+        "base64_image_data": base64_image_data
+    }
+
+    return prediction_data
 
 
 def process_dicom_image(image, ensemble_models, label_map, threshold, image_size):
@@ -253,14 +289,37 @@ def process_normal_image(image, label_map, ensemble_models, threshold, image_siz
     }
 
     return prediction_data
+def process_normal_image_hard(image, ensemble_models, label_map, threshold,image_size):
+    image_filename = secure_filename(image.filename)
+    image_path = os.path.join(converted_images_folder, image_filename)
+    
+    with open(image_path, "wb") as image_file:
+        image.save(image_file)
+    
+    img = Image.open(image_path).convert('RGB')
 
+    predicted_label_index = ensemble_inference_hard(ensemble_models, img, image_size)
+    predicted_label_str = label_map[predicted_label_index]
+    
+    with open(image_path, "rb") as image_file:
+        base64_image_data = base64.b64encode(image_file.read()).decode("utf-8")
+
+    os.remove(image_path)  # Remove the temporary image file
+
+    prediction_data = {
+        "image_name": image_filename,
+        "predicted_label": predicted_label_str,
+        "confidence_score": None,  # No confidence score for hard voting
+        "base64_image_data": base64_image_data
+    }
+
+    return prediction_data
 
 
 converted_images_folder = 'converted_images'
 
 if not os.path.exists(converted_images_folder):
     os.makedirs(converted_images_folder)
-
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -274,7 +333,9 @@ def index():
         label_map = {0: 'healthy', 1: 'unhealthy'}
         threshold = 0.50
         image_size = (224, 224)
-        ensemble_models = [resnet_model, model_dens, model_dens_aug]
+        ensemble_models = [resnet_model,resnet101_model,model_dens,model_dens_aug]
+        # 1st [resnet_model, model_dens,]
+        # 2nd -[resnet_model, model_dens]
 
         predictions_data = []
         for image in images:
@@ -283,11 +344,13 @@ def index():
 
             if image_format == 'dcm':
 
+                # pass process_dicom_image_hard -for soft voting
                 prediction_data = process_dicom_image(image, ensemble_models, label_map, threshold, image_size)
                 predictions_data.append(prediction_data)
 
             elif image_format in ['jpg', 'jpeg', 'png']:
-                prediction_data = process_normal_image(image, label_map, ensemble_models, threshold, image_size)
+                #prediction_data = process_normal_image(image, label_map,ensemble_models ,threshold, image_size)  #soft voting
+                prediction_data = process_normal_image_hard(image,ensemble_models, label_map, threshold, image_size)
                 predictions_data.append(prediction_data)
 
             else:
@@ -336,8 +399,6 @@ def download_csv():
                          as_attachment=True)
     except Exception as e:
         return render_template('error.html', error=str(e))
-
-
 
 # Function to save prediction results to CSV file
 def save_to_csv(predictions_data):
